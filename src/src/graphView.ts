@@ -85,8 +85,7 @@ export async function openSpec(root: vscode.Uri, rel: string):
   Promise<void> {
   const uri = vscode.Uri.joinPath(root, rel);
   if (isFileWise(rel)) {
-    await vscode.commands.executeCommand("vscode.openWith", uri,
-      "specScope.pairedView");
+    await vscode.commands.executeCommand("specScope.openPaired", uri);
   } else {
     await vscode.commands.executeCommand("vscode.open", uri);
   }

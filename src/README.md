@@ -2,8 +2,8 @@
 
 A Pi **Coder** writes code and sibling `*.spec.md` specs; up to K Pi
 **Annotators** map each submitted pair into a workspace SQLite index; a
-paired editor shows the rendered spec beside the untouched native source
-with matching colors and semantic scroll sync. Product overview:
+spec's Markdown source opens beside its untouched native source file,
+both line-colored by mapping and kept in semantic scroll sync. Product overview:
 [../spec-scope/app.md](../spec-scope/app.md); policies, tools, and agent
 docs live beside it in [../spec-scope/](../spec-scope/).
 
@@ -66,7 +66,7 @@ npm test               # unit tests (node:test): queue, SQLite, jobs,
 npm run lint:limits    # ≤128 lines/file, ≤80 chars/line, ≤64 lines/function
 npm run itest          # inside real VS Code: activation, right-sidebar
                        # tabs, node:sqlite, Pi SDK import, config errors,
-                       # paired view opening
+                       # spec/source pair layout and tab cleanup
 SMOKE_CODER=moonshotai/kimi-k3 SMOKE_ANNOTATOR=minimax/MiniMax-M3 \
   npm run smoke -- /tmp/demo-ws /tmp/trace.jsonl   # real models, headless
 ```
@@ -81,5 +81,6 @@ Design notes for the hub modules: [extension](src/extension.spec.md),
 - The scheduler is in-process: jobs running when VS Code closes become
   `interrupted` and need a retry.
 - Explicit `Source:` pairing is resolved within the source's directory.
-- Spec blocks are anchored per Markdown block and list item; a mapping
-  inside one long paragraph colors the whole paragraph.
+- Only one spec/source pair is shown at a time (spec in column One,
+  source in column Two). Use VS Code's Markdown preview to read a spec
+  rendered.

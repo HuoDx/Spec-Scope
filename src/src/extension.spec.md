@@ -8,8 +8,9 @@ Source: [extension.ts](./extension.ts)
 `extension.ts` is the only place that knows every module. It resolves the
 workspace root, opens the SQLite registry, starts a trace run, recovers
 abandoned jobs, constructs the job service and both agents, and registers
-the three sidebar tabs, the paired editor, watchers, and commands. It holds
-no logic of its own beyond wiring and shutdown ordering.
+the three sidebar tabs, the spec/source pair layout, watchers, and
+commands. It holds no logic of its own beyond wiring and shutdown
+ordering.
 
 ## Module map and dependency direction
 
@@ -19,11 +20,11 @@ Dependencies point downward; nothing below the VS Code layer imports
 
 | Layer | Modules | Owns |
 | --- | --- | --- |
-| VS Code UI | `coderView`, `annotationsView`, `graphView`, `viewer`, `pairedView`, `pairedEvents`, `specPage`, `codePane`, `commands`, `config`, `webview` | Webviews, tree, decorations, commands, settings |
+| VS Code UI | `coderView`, `annotationsView`, `graphView`, `pairLayout`, `pairedView`, `pairedEvents`, `pairStatus`, `editorPane`, `commands`, `config`, `webview` | Webviews, tree, editor layout and decorations, commands, settings |
 | Agents | `coder`, `coderSession`, `coderEvents`, `annotator`, `tools`, `piTrace`, `pi` | Pi sessions, tool definitions, model resolution |
 | Jobs | `jobs`, `job`, `queue`, `ranges` | Submission, coalescing, execution, publication |
 | Data | `store`, `queries`, `trace`, `db` | SQLite schema, invariants, events |
-| Files | `snapshot`, `specs`, `markdown`, `graph`, `prune`, `render`, `sync`, `pairState` | Pure or fs-only logic |
+| Files | `snapshot`, `specs`, `markdown`, `graph`, `prune`, `paint`, `sync`, `pairState` | Pure or fs-only logic |
 
 ## Data and control flow
 
@@ -36,8 +37,8 @@ Dependencies point downward; nothing below the VS Code layer imports
    runner creates a fresh read-only Pi session whose `annotate` tool
    inserts rows during the call and whose `finish_annotations` publishes.
 4. Every state change fires one `EventEmitter<void>` (`changes`); the
-   Annotations tree and open paired views re-read SQLite on it. There is no
-   other event bus.
+   Annotations tree and the on-screen pair re-read SQLite on it. There is
+   no other event bus.
 
 ## Ownership and lifecycle
 

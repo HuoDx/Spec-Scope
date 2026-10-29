@@ -3,13 +3,14 @@
  * `scripts/itest.js`. Verifies what unit tests cannot: activation in the
  * Electron extension host, the three secondary-sidebar tab containers,
  * `node:sqlite` and the ESM Pi SDK loading there,
- * clear model-configuration errors, and that the paired view opens the
- * untouched native source editor beside the rendered spec.
+ * clear model-configuration errors, and the spec/source pair layout
+ * (see pairs.ts).
  */
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { checkPairLayout } from "./pairs";
 
 async function until(cond: () => boolean, ms = 15000): Promise<void> {
   const end = Date.now() + ms;
@@ -57,17 +58,6 @@ export async function run(): Promise<void> {
   assert.match(error, /Unknown Pi provider "no-such-provider"/);
   db.close();
 
-  const source = path.join(root, "src", "a.ts");
-  const before = fs.readFileSync(source, "utf8");
-  await vscode.commands.executeCommand("vscode.openWith",
-    vscode.Uri.file(path.join(root, "src", "a.spec.md")),
-    "specScope.pairedView");
-  await until(() => vscode.window.visibleTextEditors.some((e) =>
-    e.document.uri.fsPath === source));
-  const editor = vscode.window.visibleTextEditors.find((e) =>
-    e.document.uri.fsPath === source)!;
-  assert.equal(editor.document.isDirty, false, "source not modified");
-  assert.equal(editor.document.getText(), before, "source text unchanged");
-  assert.equal(editor.viewColumn, vscode.ViewColumn.Two, "opened beside");
+  await checkPairLayout(root);
   console.log("SPEC SCOPE INTEGRATION: all checks passed");
 }

@@ -18,6 +18,8 @@ const files = {
     "  return a + b;\n}\n",
   "src/a.spec.md": "# Add\n\nParent: [App](../app.md)\n\n" +
     "## Contract\nReturns the sum of two numbers.\n",
+  "src/b.ts": "export const b = 1;\n",
+  "src/b.spec.md": "# B\n\nParent: [App](../app.md)\n\nA constant.\n",
   "app.md": "# App\n",
   ".vscode/settings.json": JSON.stringify({
     "specScope.annotator.provider": "no-such-provider",

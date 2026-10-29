@@ -10,17 +10,17 @@ import * as vscode from "vscode";
 import { sourceOfNode } from "./annotationsView";
 import { pickModel } from "./config";
 import { Db, STATE_DIR } from "./db";
-import { openSpec } from "./graphView";
 import { JobService } from "./jobs";
+import { PairLayout } from "./pairLayout";
 import { specForSource } from "./specs";
 import { exportRun, listRuns, Trace } from "./trace";
-import { PairedViewProvider } from "./viewer";
 
 export interface CommandDeps {
   root: string;
   db: Db;
   jobs: JobService;
   trace: Trace;
+  pairs: PairLayout;
 }
 
 /** Registers every command; returns their disposables. */
@@ -46,21 +46,15 @@ export function registerCommands(d: CommandDeps): vscode.Disposable[] {
         vscode.window.activeTextEditor?.document.uri.fsPath)),
     reg("specScope.openPaired", (uri?: vscode.Uri) => {
       const target = uri ?? vscode.window.activeTextEditor?.document.uri;
-      if (target) {
-        void vscode.commands.executeCommand("vscode.openWith", target,
-          PairedViewProvider.viewType);
-      }
+      if (target) void d.pairs.open(target);
     }),
     reg("specScope.openPairedForSource", (source: string) => {
       try {
-        void openSpec(vscode.Uri.file(d.root), specForSource(d.root, source));
+        void d.pairs.open(vscode.Uri.file(
+          path.join(d.root, specForSource(d.root, source))));
       } catch (err) {
         void vscode.window.showErrorMessage((err as Error).message);
       }
-    }),
-    reg("specScope.openAsText", (uri?: vscode.Uri) => {
-      if (uri) void vscode.commands.executeCommand("vscode.openWith", uri,
-        "default");
     }),
   ];
 }

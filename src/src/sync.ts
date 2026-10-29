@@ -20,6 +20,8 @@ export interface Mapping {
   codeEnd: number;
   /** Color group: identical spec ranges share a group. */
   group: number;
+  /** The Annotator's optional explanation. */
+  note?: string;
 }
 
 /** The only capability the controller has over a pane. */
@@ -27,14 +29,15 @@ export interface Pane {
   reveal(start: number, end: number): void;
 }
 
-type Side = "spec" | "code";
+export type Side = "spec" | "code";
 
-function range(m: Mapping, side: Side): [number, number] {
+/** The mapping's inclusive line range on `side`. */
+export function span(m: Mapping, side: Side): [number, number] {
   return side === "spec" ? [m.specStart, m.specEnd] : [m.codeStart, m.codeEnd];
 }
 
 function distance(m: Mapping, side: Side, line: number): number {
-  const [s, e] = range(m, side);
+  const [s, e] = span(m, side);
   return line < s ? s - line : line > e ? line - e : 0;
 }
 
@@ -52,7 +55,7 @@ export function nearest(maps: Mapping[], side: Side, line: number,
     }
     const d = distance(m, side, line) - distance(best, side, line);
     const tie = d === 0 && (m.id === active ||
-      (best.id !== active && range(m, side)[0] < range(best, side)[0]));
+      (best.id !== active && span(m, side)[0] < span(best, side)[0]));
     if (d < 0 || tie) best = m;
   }
   return best;
@@ -83,11 +86,14 @@ export class SyncController {
   }
 
   /**
-   * Hover or click at `line` on `side`: the containing mapping becomes
-   * active and the other pane reveals it. Returns it for highlighting.
+   * Click at `line` on `side`: the containing mapping (the active one if
+   * it covers the line, else the innermost) becomes active and the other
+   * pane reveals it. Returns it for highlighting.
    */
   focus(side: Side, line: number): Mapping | undefined {
-    const hits = this.maps.filter((m) => distance(m, side, line) === 0);
+    const size = (m: Mapping) => span(m, side)[1] - span(m, side)[0];
+    const hits = this.maps.filter((m) => distance(m, side, line) === 0)
+      .sort((a, b) => size(a) - size(b));
     if (hits.length === 0) return undefined;
     const m = hits.find((h) => h.id === this.active) ?? hits[0];
     this.active = m.id;
@@ -99,20 +105,21 @@ export class SyncController {
     const to: Side = from === "spec" ? "code" : "spec";
     this.aligned = m.id;
     this.muted[to] = this.clock() + this.muteMs;
-    const [s, e] = range(m, to);
+    const [s, e] = span(m, to);
     this.panes[to].reveal(s, e);
   }
 }
 
 /** Assigns color groups: one per distinct spec range, in spec order. */
 export function groupMappings(rows: { id: number; spec_start: number;
-  spec_end: number; code_start: number; code_end: number }[]): Mapping[] {
+  spec_end: number; code_start: number; code_end: number;
+  note?: string | null }[]): Mapping[] {
   const groups = new Map<string, number>();
   return rows.map((r) => {
     const key = `${r.spec_start}:${r.spec_end}`;
     if (!groups.has(key)) groups.set(key, groups.size);
     return { id: r.id, specStart: r.spec_start, specEnd: r.spec_end,
       codeStart: r.code_start, codeEnd: r.code_end,
-      group: groups.get(key)! };
+      group: groups.get(key)!, note: r.note ?? undefined };
   });
 }

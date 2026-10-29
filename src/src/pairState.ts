@@ -11,9 +11,11 @@
  *   none    - nothing to show.
  */
 import { Db } from "./db";
+import { mappingsOf } from "./queries";
 import { ancestryHash, Revision, sameRevision, sha256 } from "./snapshot";
-import { ancestry, readText } from "./specs";
+import { ancestry, readText, sourceForSpec } from "./specs";
 import { getJob, getPair } from "./store";
+import { groupMappings, Mapping } from "./sync";
 
 export type ViewStatus = "current" | "stale" | "draft" | "none";
 
@@ -71,4 +73,35 @@ export function liveRevision(root: string, specPath: string,
   const { chain, problems } = ancestry(root, specPath);
   return { sourceHash: sha256(source), specHash: sha256(specText),
     ancestryHash: ancestryHash(chain, problems) };
+}
+
+/** Everything one pair shows, computed without any editor. */
+export interface PairModel {
+  sourcePath?: string;
+  state: PairState;
+  maps: Mapping[];
+}
+
+/**
+ * Resolves the spec's source and loads the mapping set to show.
+ * `liveText(rel)` returns a document's unsaved editor text, if open.
+ */
+export function loadPair(db: Db, root: string, specPath: string,
+  liveText: (rel: string) => string | undefined): PairModel {
+  let sourcePath: string | undefined;
+  try {
+    sourcePath = sourceForSpec(root, specPath);
+  } catch (err) {
+    return { state: { status: "none", detail: (err as Error).message },
+      maps: [] };
+  }
+  if (!sourcePath) {
+    return { maps: [], state: { status: "none",
+      detail: "Module spec: no direct source pair." } };
+  }
+  const specText = liveText(specPath) ?? readText(root, specPath);
+  const state = pairState(db, sourcePath, liveRevision(root, specPath,
+    specText, sourcePath, liveText(sourcePath)));
+  const rows = state.jobId ? mappingsOf(db, state.jobId) : [];
+  return { sourcePath, state, maps: groupMappings(rows) };
 }

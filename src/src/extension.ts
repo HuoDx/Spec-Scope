@@ -1,7 +1,7 @@
 /**
  * @fileoverview Extension entry point: wires settings, SQLite, the job
- * service, both Pi roles, the three sidebar tabs, the paired editor, and
- * commands. See extension.spec.md for the module map and data flow.
+ * service, both Pi roles, the three sidebar tabs, the spec/source pair
+ * layout, and commands. See extension.spec.md for the module map and data flow.
  *
  * Activation is cheap: the database opens synchronously, while the Pi SDK
  * loads lazily on the first Coder prompt or Annotator job.
@@ -12,15 +12,15 @@ import { createAnnotatorRunner, disposeAnnotators } from "./annotator";
 import { AnnotationsView } from "./annotationsView";
 import { CoderAgent } from "./coder";
 import { CoderView } from "./coderView";
-import { disposeDecorations } from "./codePane";
 import { registerCommands } from "./commands";
 import { maxParallel, readRole, resolveRoot } from "./config";
 import { Db, openWorkspaceDb } from "./db";
+import { disposeDecorations } from "./editorPane";
 import { GraphView } from "./graphView";
 import { JobService } from "./jobs";
+import { PairLayout } from "./pairLayout";
 import { markAbandoned } from "./queries";
 import { newRunId, Trace } from "./trace";
-import { PairedViewProvider } from "./viewer";
 
 export async function activate(ctx: vscode.ExtensionContext):
   Promise<void> {
@@ -52,9 +52,10 @@ export async function activate(ctx: vscode.ExtensionContext):
     role: () => readRole("coder"), submit: (p) => jobs.submit(p, "coder"),
     emit: (e) => coderView.post(e) });
   coderView.agent = coder;
-  ctx.subscriptions.push(changes,
+  const pairs = new PairLayout({ root, db, changes: changes.event });
+  ctx.subscriptions.push(changes, pairs,
     ...registerViews({ ext, root, db, jobs, coder, coderView, changes }),
-    ...registerCommands({ root, db, jobs, trace }),
+    ...registerCommands({ root, db, jobs, trace, pairs }),
     { dispose: () => {
       coder.dispose();
       disposeAnnotators();
@@ -74,7 +75,7 @@ interface Wiring {
   changes: vscode.EventEmitter<void>;
 }
 
-/** Registers the three sidebar tabs, the paired editor, and watchers. */
+/** Registers the three sidebar tabs and the watchers behind them. */
 function registerViews(w: Wiring): vscode.Disposable[] {
   const annotations = new AnnotationsView(w.db, w.jobs);
   const graph = new GraphView(w.ext, vscode.Uri.file(w.root));
@@ -87,9 +88,6 @@ function registerViews(w: Wiring): vscode.Disposable[] {
     vscode.window.createTreeView(AnnotationsView.id,
       { treeDataProvider: annotations }),
     vscode.window.registerWebviewViewProvider(GraphView.id, graph),
-    vscode.window.registerCustomEditorProvider(PairedViewProvider.viewType,
-      new PairedViewProvider({ ext: w.ext, root: w.root, db: w.db,
-        changes: w.changes.event }), retain),
     w.changes.event(() => annotations.refresh()),
     md, md.onDidChange(() => graph.invalidate()),
     md.onDidCreate(() => graph.invalidate()),

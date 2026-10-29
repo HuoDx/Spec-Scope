@@ -1,40 +1,37 @@
 /**
  * @fileoverview Editor, document, and job events that drive one paired
- * view. Spec edits re-render the Markdown; source edits (saved or not)
- * re-evaluate staleness; native editor scrolling and mouse selection feed
- * the sync controller; job changes reload mapping rows.
+ * view. Edits to either document (saved or not) and job changes reload
+ * the mapping set; native scrolling and mouse clicks feed scroll sync.
+ * Uses only the view's public methods.
  */
 import * as vscode from "vscode";
 import type { PairedView } from "./pairedView";
 
-/** Subscribes the view to editor, document, and job events. */
-export function listen(v: PairedView): vscode.Disposable[] {
-  const timers = new Map<string, NodeJS.Timeout>();
-  const later = (key: string, fn: () => void) => {
-    clearTimeout(timers.get(key));
-    timers.set(key, setTimeout(fn, 200));
+/** Subscribes `v` to editor, document, and job events. */
+export function listen(v: PairedView, changes: vscode.Event<void>):
+  vscode.Disposable[] {
+  let timer: NodeJS.Timeout | undefined;
+  const later = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => v.refresh(), 200);
   };
-  const isSource = (d: vscode.TextDocument) =>
-    d.uri.toString() === v.code?.uri.toString();
   return [
-    { dispose: () => timers.forEach((t) => clearTimeout(t)) },
+    { dispose: () => clearTimeout(timer) },
     vscode.workspace.onDidChangeTextDocument((e) => {
-      if (e.document === v.doc) later("html", () => void v.renderHtml());
-      else if (isSource(e.document)) later("maps", () => v.renderMappings());
+      if (v.sideOf(e.document)) later();
     }),
     vscode.window.onDidChangeTextEditorVisibleRanges((e) => {
+      const side = v.sideOf(e.textEditor.document);
       const top = e.visibleRanges[0]?.start.line;
-      if (isSource(e.textEditor.document) && top !== undefined) {
-        v.sync.scrolled("code", top + 1);
-      }
+      if (side && top !== undefined) v.scrolled(side, top + 1);
     }),
     vscode.window.onDidChangeTextEditorSelection((e) => {
-      if (!isSource(e.textEditor.document) ||
-        e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
-      const m = v.sync.focus("code", e.selections[0].active.line + 1);
-      if (m) v.setFocus(m);
+      const side = v.sideOf(e.textEditor.document);
+      if (side && e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+        v.clicked(side, e.selections[0].active.line + 1);
+      }
     }),
     vscode.window.onDidChangeVisibleTextEditors(() => v.paint()),
-    v.deps.changes(() => later("maps", () => v.renderMappings())),
+    changes(later),
   ];
 }

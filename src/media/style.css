@@ -26,7 +26,6 @@ button:disabled { opacity: 0.5; cursor: default; }
   border-bottom: 1px solid var(--vscode-panel-border);
   background: var(--vscode-sideBar-background);
 }
-.sticky { position: sticky; top: 0; z-index: 1; }
 .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; }
 .muted { color: var(--vscode-descriptionForeground); }
@@ -62,16 +61,3 @@ button:disabled { opacity: 0.5; cursor: default; }
   fill: var(--vscode-textLink-foreground); }
 .node.related text { opacity: 0.7; }
 .node text { fill: var(--vscode-foreground); font-size: 11px; }
-
-/* Paired spec view */
-.spec { padding: 8px 20px 40vh; line-height: 1.5; }
-.spec [data-s] { border-left: 3px solid transparent; padding-left: 6px;
-  margin-left: -9px; border-radius: 2px; }
-.spec .provisional { border-left-style: dashed; }
-.spec .focus { outline: 1px solid var(--vscode-focusBorder); }
-.spec pre { background: var(--vscode-textCodeBlock-background);
-  padding: 6px; overflow: auto; }
-.badge { padding: 0 6px; border-radius: 8px; font-size: 0.85em;
-  border: 1px solid var(--vscode-panel-border); }
-.badge.stale, .badge.draft { color: var(--vscode-editorWarning-foreground); }
-.badge.current { color: var(--vscode-testing-iconPassed, inherit); }

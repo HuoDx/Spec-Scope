@@ -1,127 +1,114 @@
 /**
- * @fileoverview One open `*.spec.md` paired view. See pairedView.spec.md for
- * the full collaboration contract and event flow.
+ * @fileoverview One spec/source pair: both documents in VS Code's native
+ * editors, painted with paired colors and kept in semantic scroll sync.
+ * See pairedView.spec.md for the collaboration contract.
  *
- * Left: the rendered spec (webview, `media/spec.js`). Right: the original
- * source in VS Code's native editor, opened beside. The two meet only
- * through `SyncController` (reveal) and `CodePane` (decorations).
+ * Which editors are on screen is `pairLayout.ts`'s job; this class only
+ * decorates and scrolls whatever editors of the pair are visible. Both
+ * documents are left exactly as they are.
  */
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { CodePane, colorOf } from "./codePane";
 import { Db } from "./db";
-import { mappingsOf } from "./queries";
+import { EditorPane } from "./editorPane";
+import { paintPlan, Stroke } from "./paint";
 import { listen } from "./pairedEvents";
-import { liveRevision, pairState, PairState } from "./pairState";
-import { renderSpec } from "./render";
-import { sourceForSpec } from "./specs";
-import { handleSpecMessage, SpecMessage, specPage } from "./specPage";
-import { groupMappings, Mapping, SyncController } from "./sync";
+import { loadPair, PairModel } from "./pairState";
+import { PairStatus } from "./pairStatus";
+import { Mapping, Side, SyncController } from "./sync";
 
-export interface ViewerDeps {
-  ext: vscode.Uri;
+export interface PairDeps {
   root: string;
   db: Db;
   /** Fires whenever job or mapping state changes. */
   changes: vscode.Event<void>;
 }
 
-export class PairedView {
-  readonly specPath: string;
-  sourcePath?: string;
-  code?: CodePane;
-  readonly sync: SyncController;
-  private maps: Mapping[] = [];
-  private state: PairState = { status: "none", detail: "" };
+export class PairedView implements vscode.Disposable {
+  readonly spec: EditorPane;
+  source?: EditorPane;
+  private readonly specPath: string;
+  private readonly sync: SyncController;
+  private readonly status = new PairStatus();
+  private readonly subs: vscode.Disposable[];
+  private model: PairModel = { state: { status: "none", detail: "" },
+    maps: [] };
+  private plans: Record<Side, Stroke[]> = { spec: [], code: [] };
   private focused?: Mapping;
-  private error?: string;
 
-  constructor(readonly doc: vscode.TextDocument,
-    readonly panel: vscode.WebviewPanel, readonly deps: ViewerDeps) {
-    this.specPath = path.relative(deps.root, doc.uri.fsPath)
-      .split(path.sep).join("/");
+  constructor(specUri: vscode.Uri, private readonly deps: PairDeps) {
+    this.spec = new EditorPane(specUri);
+    this.specPath = this.rel(specUri);
     this.sync = new SyncController({
-      spec: { reveal: (s) => this.post({ type: "reveal", line: s }) },
-      code: { reveal: (s, e) => this.code?.reveal(s, e) },
+      spec: { reveal: (s, e) => this.spec.reveal(s, e) },
+      code: { reveal: (s, e) => this.source?.reveal(s, e) },
     });
-    specPage(panel.webview, deps.ext);
-    const subs = listen(this);
-    subs.push(panel.webview.onDidReceiveMessage((m: SpecMessage) =>
-      handleSpecMessage(this, m)));
-    panel.onDidDispose(() => {
-      subs.forEach((s) => s.dispose());
-      this.code?.decorate([], false);
-    });
+    this.refresh();
+    this.subs = listen(this, deps.changes);
   }
 
-  post(message: object): void {
-    void this.panel.webview.postMessage(message);
-  }
-
-  /** Re-renders the spec, re-resolves its source, then the mappings. */
-  async renderHtml(): Promise<void> {
-    try {
-      this.sourcePath = sourceForSpec(this.deps.root, this.specPath);
-      this.error = undefined;
-    } catch (err) {
-      this.sourcePath = undefined;
-      this.error = (err as Error).message;
+  /** Reloads source resolution, mapping rows, and trust; repaints. */
+  refresh(): void {
+    const { root, db } = this.deps;
+    this.model = loadPair(db, root, this.specPath, (rel) =>
+      vscode.workspace.textDocuments.find((d) =>
+        this.rel(d.uri) === rel)?.getText());
+    const src = this.model.sourcePath;
+    const uri = src && vscode.Uri.file(path.join(root, src));
+    if (uri?.toString() !== this.source?.uri.toString()) {
+      this.source?.decorate([], [], false);
+      this.source = uri ? new EditorPane(uri) : undefined;
     }
-    const uri = this.sourcePath &&
-      vscode.Uri.file(path.join(this.deps.root, this.sourcePath));
-    if (uri && this.code?.uri.toString() !== uri.toString()) {
-      this.code = new CodePane(uri);
-      await this.showSource();
-    } else if (!uri) {
-      this.code = undefined;
-    }
-    this.post({ type: "html", html: await renderSpec(this.doc.getText()),
-      hasSource: !!this.code });
-    this.renderMappings();
-  }
-
-  /** Reloads mapping rows and staleness; repaints both sides. */
-  renderMappings(): void {
-    if (!this.sourcePath || !this.code) {
-      this.maps = [];
-      this.post({ type: "mappings", status: "none", maps: [],
-        detail: this.error ?? "Module spec: no direct source pair." });
-      return;
-    }
-    const open = vscode.workspace.textDocuments.find((d) =>
-      d.uri.toString() === this.code?.uri.toString());
-    this.state = pairState(this.deps.db, this.sourcePath, liveRevision(
-      this.deps.root, this.specPath, this.doc.getText(), this.sourcePath,
-      open?.getText()));
-    const rows = this.state.jobId ?
-      mappingsOf(this.deps.db, this.state.jobId) : [];
-    this.maps = groupMappings(rows);
-    this.sync.setMappings(this.maps);
-    if (!this.maps.some((m) => m.id === this.focused?.id)) {
+    const maps = this.model.maps;
+    this.sync.setMappings(maps);
+    if (!maps.some((m) => m.id === this.focused?.id)) {
       this.focused = undefined;
     }
+    this.plans = { spec: paintPlan(maps, "spec"),
+      code: paintPlan(maps, "code") };
     this.paint();
-    this.post({ type: "mappings", status: this.state.status,
-      detail: this.state.detail, maps: this.maps.map((m) => ({ id: m.id,
-        s: m.specStart, e: m.specEnd, color: colorOf(m.group) })) });
+    this.status.show(this.model);
   }
 
-  /** Repaints code decorations (e.g. when the editor becomes visible). */
+  /** Repaints both sides (e.g. when an editor becomes visible). */
   paint(): void {
-    this.code?.decorate(this.maps, this.state.status !== "current",
-      this.focused);
+    const { maps, state } = this.model;
+    const draft = state.status !== "current";
+    const f = this.focused;
+    this.spec.decorate(this.plans.spec, maps, draft,
+      f && [f.specStart, f.specEnd]);
+    this.source?.decorate(this.plans.code, maps, draft,
+      f && [f.codeStart, f.codeEnd]);
   }
 
-  setFocus(m: Mapping | undefined): void {
+  /** Which side `doc` is on, if it belongs to this pair. */
+  sideOf(doc: vscode.TextDocument): Side | undefined {
+    const uri = doc.uri.toString();
+    if (uri === this.spec.uri.toString()) return "spec";
+    return uri === this.source?.uri.toString() ? "code" : undefined;
+  }
+
+  scrolled(side: Side, topLine: number): void {
+    this.sync.scrolled(side, topLine);
+  }
+
+  /** A click on `line` focuses the innermost mapping there, if any. */
+  clicked(side: Side, line: number): void {
+    const m = this.sync.focus(side, line);
+    if (!m) return;
     this.focused = m;
     this.paint();
-    this.post({ type: "emphasize", id: m?.id });
   }
 
-  async showSource(): Promise<void> {
-    if (!this.code) return;
-    await vscode.window.showTextDocument(this.code.uri, { preview: false,
-      viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
-    this.paint();
+  dispose(): void {
+    this.subs.forEach((s) => s.dispose());
+    this.spec.decorate([], [], false);
+    this.source?.decorate([], [], false);
+    this.status.dispose();
+  }
+
+  private rel(uri: vscode.Uri): string {
+    return path.relative(this.deps.root, uri.fsPath).split(path.sep)
+      .join("/");
   }
 }

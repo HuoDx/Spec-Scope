@@ -1,11 +1,10 @@
 /**
  * @fileoverview Paired-viewer logic: semantic (non-proportional) sync,
- * feedback-loop suppression, one-to-many priority, non-mutation, and
- * line-anchored rendering that leaves content unchanged.
+ * feedback-loop suppression, one-to-many priority, and non-mutation.
+ * Paint planning has its own suite in paint.test.ts.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { renderSpec } from "../src/render";
 import { groupMappings, Mapping, nearest, Pane, SyncController }
   from "../src/sync";
 
@@ -64,16 +63,3 @@ test("one-to-many: the focused mapping wins on later scrolls", () => {
   assert.deepEqual(panes.code.calls.at(-1), [40, 50]);
   assert.equal(nearest(ROWS, "spec", 2)?.id, 1, "tie -> earlier start");
 });
-
-test("rendering anchors blocks and list items without altering text",
-  async () => {
-    const md = "# Title\n\nPara one\nstill one\n\n- a\n- b\n  - c\n\n" +
-      "<b>x</b>\n";
-    const html = await renderSpec(md);
-    assert.match(html, /<div class="blk" data-s="1" data-e="1"><h1/);
-    assert.match(html, /data-s="3" data-e="4"><p>Para one\nstill one/);
-    assert.match(html, /<li data-s="6" data-e="6">/);
-    assert.match(html, /<li data-s="7" data-e="8">/);
-    assert.match(html, /<li data-s="8" data-e="8">/);
-    assert.match(html, /&lt;b&gt;x&lt;\/b&gt;/, "raw HTML is escaped");
-  });

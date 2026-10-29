@@ -6,9 +6,10 @@ Spec Scope is a VS Code companion with two asynchronous Pi agent roles. The
 independent **Annotators** read each submitted snapshot and record semantic
 spec-to-code line mappings directly into a workspace SQLite registry.
 
-Opening a `*.spec.md` shows the rendered spec on the left and the
+Opening a `*.spec.md` shows its Markdown source on the left and the
 **unchanged native source editor** on the right, with paired translucent
-colors and semantic scroll sync in both directions. A Spec Graph tab
+line colors and semantic scroll sync in both directions. One pair is on
+screen at a time; opening another replaces it. A Spec Graph tab
 navigates `Parent:` hierarchies and cross-references, and every run can be
 exported as an observable JSONL trace.
 
