@@ -1,0 +1,111 @@
+{
+  "name": "spec-scope",
+  "displayName": "Spec Scope",
+  "description": "Pi Coder + Annotators with a semantic spec-to-code view.",
+  "publisher": "spec-scope",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "engines": { "vscode": "^1.106.0", "node": ">=22.19.0" },
+  "categories": ["Other"],
+  "main": "./out/src/extension.js",
+  "scripts": {
+    "sync-prompts": "node scripts/sync-prompts.js",
+    "compile": "npm run sync-prompts && tsc -p .",
+    "watch": "tsc -p . -w",
+    "test": "npm run compile && node --test out/test/*.test.js",
+    "lint:limits": "node scripts/check-limits.js",
+    "smoke": "npm run compile && node scripts/smoke.js",
+    "itest": "npm run compile && node scripts/itest.js"
+  },
+  "contributes": {
+    "viewsContainers": { "secondarySidebar": [
+      { "id": "specScopeCoder", "title": "Coder",
+        "icon": "$(comment-discussion)" },
+      { "id": "specScopeAnnotations", "title": "Annotations",
+        "icon": "$(checklist)" },
+      { "id": "specScopeGraph", "title": "Spec Graph",
+        "icon": "$(type-hierarchy)" }
+    ] },
+    "views": {
+      "specScopeCoder": [
+        { "id": "specScope.coder", "name": "Coder", "type": "webview" }],
+      "specScopeAnnotations": [
+        { "id": "specScope.annotations", "name": "Annotations" }],
+      "specScopeGraph": [
+        { "id": "specScope.graph", "name": "Spec Graph", "type": "webview" }]
+    },
+    "customEditors": [{ "viewType": "specScope.pairedView",
+      "displayName": "Spec Scope Paired View", "priority": "default",
+      "selector": [{ "filenamePattern": "*.spec.md" }] }],
+    "commands": [
+      { "command": "specScope.exportTrace", "title": "Export Trace",
+        "category": "Spec Scope", "icon": "$(export)" },
+      { "command": "specScope.configureCoder", "category": "Spec Scope",
+        "title": "Configure Coder Model" },
+      { "command": "specScope.configureAnnotator", "category": "Spec Scope",
+        "title": "Configure Annotator Model", "icon": "$(settings-gear)" },
+      { "command": "specScope.retryJob", "title": "Retry",
+        "category": "Spec Scope", "icon": "$(refresh)" },
+      { "command": "specScope.annotateFile", "category": "Spec Scope",
+        "title": "Annotate Current File" },
+      { "command": "specScope.openPaired", "category": "Spec Scope",
+        "title": "Open Paired View", "icon": "$(split-horizontal)" },
+      { "command": "specScope.openAsText", "category": "Spec Scope",
+        "title": "Open as Text", "icon": "$(go-to-file)" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "specScope.exportTrace", "group": "navigation",
+          "when": "view == specScope.annotations" },
+        { "command": "specScope.configureAnnotator", "group": "navigation",
+          "when": "view == specScope.annotations" }
+      ],
+      "view/item/context": [{ "command": "specScope.retryJob",
+        "group": "inline", "when": "viewItem == job.retryable" }],
+      "editor/title": [
+        { "command": "specScope.openAsText", "group": "navigation",
+          "when": "activeCustomEditorId == specScope.pairedView" },
+        { "command": "specScope.openPaired", "group": "navigation",
+          "when":
+          "resourceFilename =~ /\\.spec\\.md$/ && !activeCustomEditorId" }
+      ],
+      "commandPalette": [
+        { "command": "specScope.retryJob", "when": "false" },
+        { "command": "specScope.openAsText", "when": "false" }
+      ]
+    },
+    "configuration": { "title": "Spec Scope", "properties": {
+      "specScope.coder.provider": { "type": "string", "default": "",
+        "description": "Pi provider for the Coder (empty: Pi default)." },
+      "specScope.coder.model": { "type": "string", "default": "",
+        "description": "Model ID from that provider (empty: Pi default)." },
+      "specScope.coder.thinkingLevel": { "type": "string", "default": "",
+        "enum": ["", "off", "minimal", "low", "medium", "high", "xhigh",
+          "max"], "description": "Optional Pi thinking level." },
+      "specScope.annotator.provider": { "type": "string", "default": "",
+        "description": "Pi provider for Annotators (empty: Pi default)." },
+      "specScope.annotator.model": { "type": "string", "default": "",
+        "description": "Model ID for Annotators; applies to new jobs." },
+      "specScope.annotator.thinkingLevel": { "type": "string",
+        "default": "", "enum": ["", "off", "minimal", "low", "medium",
+          "high", "xhigh", "max"], "description": "Optional Pi level." },
+      "specScope.maxParallelAnnotators": { "type": "integer",
+        "default": 2, "minimum": 1,
+        "description": "Maximum concurrently running Annotators (K)." },
+      "specScope.workspaceRoot": { "type": "string", "default": "",
+        "description": "Root to annotate; empty uses the only folder." }
+    } }
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "d3": "7.9.0",
+    "marked": "18.1.2",
+    "typebox": "1.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.0",
+    "@types/vscode": "1.100.0",
+    "typescript": "5.9.3"
+  }
+}

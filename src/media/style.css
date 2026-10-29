@@ -1,0 +1,77 @@
+/* Spec Scope webviews: native look via VS Code theme variables only. */
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+button, select, textarea {
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+}
+button {
+  padding: 1px 6px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+.bar {
+  display: flex; gap: 4px; align-items: center; padding: 4px 6px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+}
+.sticky { position: sticky; top: 0; z-index: 1; }
+.grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.muted { color: var(--vscode-descriptionForeground); }
+
+/* Coder tab */
+.log { padding: 6px; font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size); padding-bottom: 90px; }
+.line { white-space: pre-wrap; margin: 2px 0; }
+.line.user { color: var(--vscode-textLink-foreground); margin-top: 8px; }
+.line.error { color: var(--vscode-errorForeground); }
+.line.note { color: var(--vscode-descriptionForeground); font-style: italic; }
+.tool { color: var(--vscode-descriptionForeground); margin: 1px 0; }
+.tool.error summary { color: var(--vscode-errorForeground); }
+.tool summary { cursor: pointer; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.tool pre { margin: 2px 0 4px 12px; max-height: 200px; overflow: auto;
+  white-space: pre-wrap; }
+.composer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px;
+  background: var(--vscode-sideBar-background); }
+.composer textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+
+/* Spec Graph tab */
+.graph { width: 100%; height: calc(100vh - 40px); display: block; }
+.problems { padding: 2px 6px; color: var(--vscode-errorForeground);
+  font-size: 0.9em; }
+.edge { stroke: var(--vscode-editorWidget-border, #888); stroke-width: 1.4; }
+.edge.link { stroke-dasharray: 3 3; opacity: 0.6; }
+.node { cursor: pointer; }
+.node circle { fill: var(--vscode-editor-background);
+  stroke: var(--vscode-textLink-foreground); stroke-width: 1.5; }
+.node.module circle { stroke: var(--vscode-descriptionForeground); }
+.node.focus circle, .node.selected circle {
+  fill: var(--vscode-textLink-foreground); }
+.node.related text { opacity: 0.7; }
+.node text { fill: var(--vscode-foreground); font-size: 11px; }
+
+/* Paired spec view */
+.spec { padding: 8px 20px 40vh; line-height: 1.5; }
+.spec [data-s] { border-left: 3px solid transparent; padding-left: 6px;
+  margin-left: -9px; border-radius: 2px; }
+.spec .provisional { border-left-style: dashed; }
+.spec .focus { outline: 1px solid var(--vscode-focusBorder); }
+.spec pre { background: var(--vscode-textCodeBlock-background);
+  padding: 6px; overflow: auto; }
+.badge { padding: 0 6px; border-radius: 8px; font-size: 0.85em;
+  border: 1px solid var(--vscode-panel-border); }
+.badge.stale, .badge.draft { color: var(--vscode-editorWarning-foreground); }
+.badge.current { color: var(--vscode-testing-iconPassed, inherit); }
