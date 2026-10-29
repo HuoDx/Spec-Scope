@@ -58,25 +58,6 @@ missing or unknown model is reported with the list of known IDs before any
 session starts. (Model IDs change: `MiniMax-M2.7` was retired upstream
 during development, see [../traces/](../traces/README.md).)
 
-## Five-minute demo
-
-1. **Coder tab:** "Create `src/stack.ts` with its spec `src/stack.spec.md`
-   (Parent: `app.md`) and submit it; then do the same for `src/ring.ts`."
-   The Coder writes both freely and calls `submit_file`, which returns at
-   once.
-2. **Annotations tab:** `active 2/2`, running workers with their models and
-   live mapping counts, then `current` results. Failed, stale, and
-   superseded jobs show a Retry action.
-3. Open `src/stack.spec.md`: rendered spec on the left, native `stack.ts`
-   on the right, same colors on corresponding regions. Scroll either side
-   and the other follows the nearest mapped anchor. Hover a colored block
-   to focus both sides. **Open as Text** edits the spec normally.
-4. **Spec Graph tab:** pick `app.md`, click `stack` to jump to its paired
-   view; select a node and **Refocus** to expand hidden (`+n`) neighbors.
-5. Edit `stack.ts` (even unsaved): the view turns *stale*. Ask the Coder to
-   resubmit, or click **Re-annotate**; only the latest revision becomes
-   current. **Annotations → Export Trace** writes a JSONL run trace.
-
 ## Develop and verify
 
 ```sh
